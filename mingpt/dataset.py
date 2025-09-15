@@ -1,12 +1,26 @@
+
+
 import itertools
 import torch
 from torch.utils.data import Dataset
 
 class CharDataset(Dataset):
-    def __init__(self, data):
+    """
+    Dataset class for the character dataset.
+
+    Args:
+        data (list): list of strings
+    """
+
+    def __init__(
+            self,
+            data
+    ):
         if hasattr(data, "ood_perc"):
             ood_perc = data.ood_perc
             data.ood_perc = 0  # shut down the randomness
+        # end if
+        
         chars = sorted(list(set(list(itertools.chain.from_iterable(data)))) + [-100, ])
         data_size, vocab_size = len(data), len(chars)  # vocab size 61, with -100 sorted to the front
         max_len = max([len(data[_]) for _ in range(len(data))])  # should be 60 in Othello
@@ -19,6 +33,7 @@ class CharDataset(Dataset):
         self.vocab_size = vocab_size
         if hasattr(data, "ood_perc"):
             data.ood_perc = ood_perc  # turn on the randomness
+        # end if
         self.data = data
     
     def __len__(self):

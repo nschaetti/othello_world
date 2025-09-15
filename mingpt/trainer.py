@@ -36,6 +36,27 @@ class TrainerConfig:
         for k,v in kwargs.items():
             setattr(self, k, v)
 
+    def __str__(self):
+        return (
+            f"TrainerConfig("
+            f"max_epochs={self.max_epochs}, "
+            f"batch_size={self.batch_size}, "
+            f"learning_rate={self.learning_rate}, "
+            f"betas={self.betas}, "
+            f"grad_norm_clip={self.grad_norm_clip}, "
+            f"weight_decay={self.weight_decay}, "
+            f"lr_decay={self.lr_decay}, "
+            f"warmup_tokens={self.warmup_tokens}, "
+            f"final_tokens={self.final_tokens}, "
+            f"ckpt_path={self.ckpt_path}, "
+            f"num_workers={self.num_workers}, "
+        )
+    # end __str__
+
+    def __repr__(self):
+        return self.__str__()
+    # end __repr__
+
 class Trainer:
     def __init__(self, model, train_dataset, test_dataset, config):
         self.model = model
@@ -59,7 +80,8 @@ class Trainer:
         model, config = self.model, self.config
         raw_model = model.module if hasattr(self.model, "module") else model
         optimizer = raw_model.configure_optimizers(config)
-
+        print(f"model: {raw_model.__class__.__name__}")
+        print(f"config: {config}")
         def run_epoch(split):
             is_train = split == 'train'
             model.train(is_train)
