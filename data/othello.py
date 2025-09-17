@@ -73,18 +73,20 @@ class Othello:
 
     def __init__(
             self,
+            synthetic: bool,
             ood_perc=0.,
             data_root=None,
             wthor=False,
-            ood_num=1000
+            num_samples=1000
     ):
         """
 
         Args:
+            synthetic (bool): Synthetic data
             ood_perc (float): The number of game generated on the fly in getitem.
             data_root (str): Root directory for data files.
             wthor (bool): Load wthor game files
-            ood_num (int): -1 means loading from files, otherwise the number of games to generate
+            num_samples (int): -1 means loading from files, otherwise the number of games to generate.
         """
         # ood_perc: probability of swapping an in-distribution game (real championship game)
         # with a generated legit but stupid game, when data_root is None, should set to 0
@@ -98,109 +100,103 @@ class Othello:
         # Criteria for a file
         criteria = lambda fn: fn.endswith("pgn") if wthor else fn.startswith("liveothello")
 
-        # Root dir isn't given
-        if data_root is None:
-            # Non-simulated game to load
-            if ood_num == 0:
-                return
-            else:
-                # Load all the games
-                # this setting used for generating synthetic dataset
-                # ood_num: how many games to generate
-                if ood_num != -1:
-                    # Multi-processing
-                    num_proc = multiprocessing.cpu_count()
-                    p = multiprocessing.Pool(num_proc)
+        # Generate data (synthetic)
+        if synthetic:
+            if data_root is not None:
+                # Progress bar for file listening
+                bar = tqdm(os.listdir(data_root))
+                trash = []
 
-                    # Generate simulated sequences
-                    for can in tqdm(p.imap(get_ood_game, range(ood_num)), total=ood_num):
-                        if not can in self.sequences:
-                            self.sequences.append(can)
-                        # end if
-                    # end for
+                # Count file loading
+                cnt = 0
 
-                    # Close threads
-                    p.close()
-
-                    # Starting times
-                    t_start = time.strftime("_%Y%m%d_%H%M%S")
-
-                    # If more than 1000, save it to Pickle file
-                    if ood_num > 1000:
-                        with open(f'./data/{wanna_use}/gen10e5_{t_start}.pickle', 'wb') as handle:
-                            pickle.dump(
-                                obj=self.sequences,
-                                file=handle,
-                                protocol=pickle.HIGHEST_PROTOCOL
-                            )
-                        # end with
+                # For each file
+                for f in bar:
+                    # Must be pickle file
+                    if not f.endswith(".pickle"):
+                        continue
                     # end if
-                else:
-                    # Progress bar for file listening
-                    bar = tqdm(os.listdir(f"./data/{wanna_use}"))
-                    trash = []
 
-                    # Count file loading
-                    cnt = 0
+                    # Open binary file
+                    with open(os.path.join(data_root, f), 'rb') as handle:
+                        cnt += 1
 
-                    # For each file
-                    for f in bar:
-                        # Must be pickle file
-                        if not f.endswith(".pickle"):
+                        # Load max 250 files
+                        if cnt > 250:
+                            break
+                        # end if
+
+                        # Load data
+                        b = pickle.load(handle)
+
+                        # Must be 100k samples each
+                        if len(b) < 9e4:
+                            trash.append(f)
                             continue
                         # end if
 
-                        # Open binary file
-                        with open(os.path.join(f"./data/{wanna_use}", f), 'rb') as handle:
-                            cnt += 1
+                        self.sequences.extend(b)
+                    # end with open
 
-                            # Load max 250 files
-                            if cnt > 250:
-                                break
-                            # end if
+                    # Get memory usage
+                    process = psutil.Process(os.getpid())
+                    mem_gb = process.memory_info().rss / 2 ** 30
+                    bar.set_description(f"Mem Used: {mem_gb:.4} GB")
+                # end for
 
-                            # Load data
-                            b = pickle.load(handle)
+                # ???
+                print("Deduplicating...")
+                seq = self.sequences
 
-                            # Must be 100k samples each
-                            if len(b) < 9e4:
-                                trash.append(f)
-                                continue
-                            # end if
+                # Sort games
+                seq.sort()
 
-                            self.sequences.extend(b)
-                        # end with open
+                # Remove doublons
+                self.sequences = [k for k, _ in itertools.groupby(seq)]
 
-                        # Get memory usage
-                        process = psutil.Process(os.getpid())
-                        mem_gb = process.memory_info().rss / 2 ** 30
-                        bar.set_description(f"Mem Used: {mem_gb:.4} GB")
-                    # end for
+                # Delete unnecessary files
+                for t in trash:
+                    os.remove(os.path.join(data_root, t))
+                # end for
 
-                    # ???
-                    print("Deduplicating...")
-                    seq = self.sequences
+                # Validation and training data
+                print(f"Deduplicating finished with {len(self.sequences)} games left")
+                self.val = self.sequences[20000000:]
+                self.sequences = self.sequences[:20000000]
 
-                    # Sort games
-                    seq.sort()
+                # Log
+                print(f"Using 20 million for training, {len(self.val)} for validation")
+            else:
+                num_samples = 20000000 if num_samples == -1 else num_samples
 
-                    # Remove doublons
-                    self.sequences = [k for k, _ in itertools.groupby(seq)]
+                # Multi-processing
+                num_proc = multiprocessing.cpu_count()
+                p = multiprocessing.Pool(num_proc)
 
-                    # Delete unnecessary files
-                    for t in trash:
-                        os.remove(os.path.join(f"./data/{wanna_use}", f))
-                    # end for
+                # Generate simulated sequences
+                for can in tqdm(p.imap(get_ood_game, range(num_samples)), total=num_samples):
+                    if not can in self.sequences:
+                        self.sequences.append(can)
+                    # end if
+                # end for
 
-                    # Validation and training data
-                    print(f"Deduplicating finished with {len(self.sequences)} games left")
-                    self.val = self.sequences[20000000:]
-                    self.sequences = self.sequences[:20000000]
+                # Close threads
+                p.close()
 
-                    # Log
-                    print(f"Using 20 million for training, {len(self.val)} for validation")
-                # end if ood_num != -1
-            # end if ood_num == 0
+                # Starting times
+                t_start = time.strftime("_%Y%m%d_%H%M%S")
+
+                # If more than 1000, save it to Pickle file
+                if num_samples > 1000:
+                    with open(f'{data_root}/gen10e5_{t_start}.pickle', 'wb') as handle:
+                        pickle.dump(
+                            obj=self.sequences,
+                            file=handle,
+                            protocol=pickle.HIGHEST_PROTOCOL
+                        )
+                    # end with
+                # end if
+            # end if
         else: # data_root given
             # For each file in data_root
             for fn in os.listdir(data_root):
@@ -300,19 +296,21 @@ def get_ood_game(_):
 
 
 def get(
+        synthetic: bool,
         ood_perc=0.,
         data_root=None,
         wthor=False,
-        ood_num=1000
+        num_samples: int = 1000
 ):
     """
     Get Othello games
     """
     return Othello(
+        synthetic=synthetic,
         ood_perc=ood_perc,
         data_root=data_root,
         wthor=wthor,
-        ood_num=ood_num
+        num_samples=num_samples
     )
 # end get
 
