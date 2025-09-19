@@ -9,41 +9,56 @@ class CharDataset(Dataset):
     Dataset class for the character dataset.
 
     Args:
-        data (list): list of strings
+        data (Othello): Othello dataset
     """
 
     def __init__(
             self,
-            data
+            data: Othello
     ):
-        if hasattr(data, "ood_perc"):
-            ood_perc = data.ood_perc
-            data.ood_perc = 0  # shut down the randomness
-        # end if
-        
+        """
+        Dataset initialization.
+        """
+        # Builds the vocabulary by collecting all unique tokens from the dataset,
+        # adding the special padding token -100, and sorting them.
         chars = sorted(list(set(list(itertools.chain.from_iterable(data)))) + [-100, ])
-        data_size, vocab_size = len(data), len(chars)  # vocab size 61, with -100 sorted to the front
-        max_len = max([len(data[_]) for _ in range(len(data))])  # should be 60 in Othello
+
+        # Vocab size 61, with -100 sorted to the front
+        data_size, vocab_size = len(data), len(chars)
+
+        # should be 60 in Othello
+        max_len = max([len(data[_]) for _ in range(len(data))])
+
+        # Log
         print('Dataset created has %d sequences, %d unique words.' % (data_size, vocab_size))
-        
+
+        # char to id
         self.stoi = {ch: i for i, ch in enumerate(chars)}
+
+        # id to char
         self.itos = {i: ch for i, ch in enumerate(chars)}
+
+        # Other
         self.max_len = max_len
         self.block_size = max_len - 1  # for autoregressive training
         self.vocab_size = vocab_size
-        if hasattr(data, "ood_perc"):
-            data.ood_perc = ood_perc  # turn on the randomness
-        # end if
         self.data = data
+    # end __init__
     
     def __len__(self):
         return len(self.data)
+    # end __len__
 
     def __getitem__(self, idx):
-        # grab a chunk of (block_size + 1) characters from the data
+        # Grab a chunk of (block_size + 1) characters from the data
         chunk = self.data[idx]
+
+        # Chunk with -100 to reach max_len
         if len(chunk) != self.max_len:
-            chunk += [-100, ] * (self.max_len - len(chunk))  # -100 can be ignored in CE
+            # -100 can be ignored in CE
+            chunk += [-100, ] * (self.max_len - len(chunk))
+        # end if
+
         # encode every character to an integer
         dix = [self.stoi[s] for s in chunk]
         """
@@ -63,12 +78,12 @@ class CharDataset(Dataset):
         - given "hell" predict "o" next
         
         In addition, because the DataLoader will create batches of examples,
-        every forward/backward pass during traning will simultaneously train
+        every forward/backward pass during training will simultaneously train
         a LOT of predictions, amortizing a lot of computation. In particular,
         for a batched input of integers X (B, T) where B is batch size and
         T is block_size and Y (B, T), the network will during training be
         simultaneously training to make B*T predictions, all at once! Of course,
-        at test time we can paralellize across batch B, but unlike during training
+        at test time we can parallelize across batch B, but unlike during training
         we cannot parallelize across the time dimension T - we have to run
         a forward pass of the network to recover the next single character of the 
         sequence along each batch dimension, and repeatedly always feed in a next
@@ -81,4 +96,8 @@ class CharDataset(Dataset):
         """
         x = torch.tensor(dix[:-1], dtype=torch.long)
         y = torch.tensor(dix[1:], dtype=torch.long)
+
         return x, y
+    # end __getitem__
+
+# end CharDataset

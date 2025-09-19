@@ -49,14 +49,18 @@ def permit(s):
     s = s.lower()
     if len(s) != 2:
         return -1
+    # end if
     if s[0] not in rows or s[1] not in columns:
         return -1
+    # end if
     return rows.index(s[0]) * 8 + columns.index(s[1])
+# end def
 
 
 def permit_reverse(integer):
     r, c = integer // 8, integer % 8
     return "".join([rows[r], columns[c]])
+# end def
 
 
 start_hands = [permit(_) for _ in ["d5", "d4", "e4", "e5"]]
@@ -273,7 +277,7 @@ class Othello:
             tbr = self.sequences[i]
         # end if
         return tbr
-    # end __getitem__
+    # end def __getitem__
 
 # end class Othello
 

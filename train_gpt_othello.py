@@ -216,7 +216,7 @@ def train_model(
     
     # Load Othello data
     console.print("[bold blue]Loading Othello data...[/bold blue]")
-    othello = get_othello(
+    othello: Othello = get_othello(
         num_samples=args.num_samples,
         synthetic=args.synthetic,
         data_root=None if synthetic_or_championship else "data/othello-synthetic",
@@ -256,7 +256,6 @@ def train_model(
         num_workers=0, 
         ckpt_path=ckpt_path
     )
-    # end TrainerConfig
     
     # Initialize trainer
     trainer = Trainer(model, train_dataset, None, tconf)

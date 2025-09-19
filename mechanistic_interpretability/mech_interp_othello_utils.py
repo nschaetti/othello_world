@@ -27,13 +27,17 @@ def permit(s):
     s = s.lower()
     if len(s) != 2:
         return -1
+    # end if
     if s[0] not in rows or s[1] not in columns:
         return -1
+    # end if
     return rows.index(s[0]) * 8 + columns.index(s[1])
+# end def
 
 def permit_reverse(integer):
     r, c = integer // 8, integer % 8
     return "".join([rows[r], columns[c]])
+# end def
 
 start_hands = [permit(_) for _ in ["d5", "d4", "e4", "e5"]]
 eights = [[-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1]]
@@ -53,28 +57,40 @@ class OthelloBoardState():
         self.age = np.zeros((8, 8))
         self.next_hand_color = 1
         self.history = []
+    # end def
 
     def get_occupied(self, ):
         board = self.state
         tbr = board.flatten() != 0
         return tbr.tolist()
+    # end def
+    
     def get_state(self, ):
         board = self.state + 1  # white 0, blank 1, black 2
         tbr = board.flatten()
         return tbr.tolist()
+    # end def
+    
     def get_age(self, ):
         return self.age.flatten().tolist()
+    # end def
+    
     def get_next_hand_color(self, ):
         return (self.next_hand_color + 1) // 2
+    # end def
     
     def update(self, moves, prt=False):
         # takes a new move or new moves and update state
         if prt:
             self.__print__()
+        # end if
         for _, move in enumerate(moves):
             self.umpire(move)
             if prt:
                 self.__print__()
+            # end if
+        # end for
+    # end def
 
     def umpire(self, move):
         r, c = move // 8, move % 8
@@ -89,6 +105,7 @@ class OthelloBoardState():
                 cur_r, cur_c = cur_r + direction[0], cur_c + direction[1]
                 if cur_r < 0  or cur_r > 7 or cur_c < 0 or cur_c > 7:
                     break
+                # end if
                 if self.state[cur_r, cur_c] == 0:
                     break
                 elif self.state[cur_r, cur_c] == color:
@@ -96,6 +113,9 @@ class OthelloBoardState():
                     break
                 else:
                     buffer.append([cur_r, cur_c])
+                # end if
+            # end while
+        # end for
         if len(tbf) == 0:  # means one hand is forfeited
             # print(f"One {color} move forfeited")
             color *= -1
@@ -107,6 +127,7 @@ class OthelloBoardState():
                     cur_r, cur_c = cur_r + direction[0], cur_c + direction[1]
                     if cur_r < 0  or cur_r > 7 or cur_c < 0 or cur_c > 7:
                         break
+                    # end if
                     if self.state[cur_r, cur_c] == 0:
                         break
                     elif self.state[cur_r, cur_c] == color:
@@ -114,21 +135,29 @@ class OthelloBoardState():
                         break
                     else:
                         buffer.append([cur_r, cur_c])
+                    # end if
+                # end while
+            # end for
+        # end if
         if len(tbf) == 0:
             valids = self.get_valid_moves()
             if len(valids) == 0:
                 assert 0, "Both color cannot put piece, game should have ended!"
             else:
                 assert 0, "Illegal move!"
+            # end if
+        # end if
                 
         self.age += 1
         for ff in tbf:
             self.state[ff[0], ff[1]] *= -1
             self.age[ff[0], ff[1]] = 0
+        # end for
         self.state[r, c] = color
         self.age[r, c] = 0
         self.next_hand_color *= -1
         self.history.append(move)
+    # end def
         
     def __print__(self, ):
         print("-"*20)
@@ -143,11 +172,15 @@ class OthelloBoardState():
                     tbp.append(" ")
                 else:
                     tbp.append("X")
+                # end if
+            # end for
             # tbp.append("\n")
             print(" ".join([a[k]] + tbp))
+        # end for
         tbp = [str(k) for k in range(1, 9)]
         print(" ".join([" "] + tbp))
         print("-"*20)
+    # end def
         
     def tentative_move(self, move):
         # tentatively put a piece, do nothing to state
@@ -157,6 +190,7 @@ class OthelloBoardState():
         r, c = move // 8, move % 8
         if not self.state[r, c] == 0:
             return 0
+        # end if
         occupied = np.sum(self.state != 0)
         color = self.next_hand_color
         tbf = []
@@ -167,6 +201,7 @@ class OthelloBoardState():
                 cur_r, cur_c = cur_r + direction[0], cur_c + direction[1]
                 if cur_r < 0  or cur_r > 7 or cur_c < 0 or cur_c > 7:
                     break
+                # end if
                 if self.state[cur_r, cur_c] == 0:
                     break
                 elif self.state[cur_r, cur_c] == color:
@@ -174,6 +209,9 @@ class OthelloBoardState():
                     break
                 else:
                     buffer.append([cur_r, cur_c])
+                # end if
+            # end while
+        # end for
         if len(tbf) != 0:
             return 1
         else:  # means one hand is forfeited
@@ -187,6 +225,7 @@ class OthelloBoardState():
                     cur_r, cur_c = cur_r + direction[0], cur_c + direction[1]
                     if cur_r < 0  or cur_r > 7 or cur_c < 0 or cur_c > 7:
                         break
+                    # end if
                     if self.state[cur_r, cur_c] == 0:
                         break
                     elif self.state[cur_r, cur_c] == color:
@@ -194,10 +233,16 @@ class OthelloBoardState():
                         break
                     else:
                         buffer.append([cur_r, cur_c])
+                    # end if
+                # end while
+            # end for
             if len(tbf) == 0:
                 return 0
             else:
                 return 2
+            # end if
+        # end if
+    # end def
         
     def get_valid_moves(self, ):
         regular_moves = []
@@ -210,25 +255,34 @@ class OthelloBoardState():
                 forfeit_moves.append(move)
             else:
                 pass
+            # end if
+        # end for
         if len(regular_moves):
             return regular_moves
         elif len(forfeit_moves):
             return forfeit_moves
         else:
             return []
+        # end if
+    # end def
  
     def get_gt(self, moves, func, prt=False):
         # takes a new move or new moves and update state
         container = []
         if prt:
             self.__print__()
+        # end if
         for _, move in enumerate(moves):
             self.umpire(move)
             container.append(getattr(self, func)())  
             # to predict first y, we need already know the first x
             if prt:
                 self.__print__()
+            # end if
+        # end for
         return container
+    # end def
+# end class OthelloBoardState
 
 
 # # %%
@@ -475,12 +529,14 @@ alpha = "ABCDEFGH"
 
 def to_board_label(i):
     return f"{alpha[i//8]}{i%8}"
+# end def
 
 
 board_labels = list(map(to_board_label, stoi_indices))
 # %%
 def str_to_int(s):
     return stoi[s] - 1
+# end def
 
 
 def to_int(x):
@@ -496,6 +552,8 @@ def to_int(x):
     elif isinstance(x, str):
         x = x.upper()
         return to_int(to_string(x))
+    # end if
+# end def
 
 
 def to_string(x):
@@ -512,6 +570,8 @@ def to_string(x):
     elif isinstance(x, str):
         x = x.upper()
         return 8 * alpha.index(x[0]) + int(x[1])
+    # end if
+# end def
 
 
 def to_label(x, from_int=True):
@@ -527,8 +587,11 @@ def to_label(x, from_int=True):
             return to_board_label(to_string(x))
         else:
             return to_board_label(x)
+        # end if
     elif isinstance(x, str):
         return x
+    # end if
+# end def
 
 
 int_to_label = to_label
@@ -540,7 +603,9 @@ def moves_to_state(moves):
     state = np.zeros((8, 8), dtype=bool)
     for move in moves:
         state[move // 8, move % 8] = 1.0
+    # end for
     return state
+# end def
 
 int_labels = (
     list(range(1, 28))

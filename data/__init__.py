@@ -11,11 +11,13 @@ def plot_probs(ax, probs, valids):
     annot = [f"{_:.2f}" for _ in probs.flatten().tolist()]
     for valid_index in valids:
         annot[valid_index] = ("\\underline{" + annot[valid_index] + "}")
+    # end for
 #     print(annot)
     sns.heatmap(probs, ax=ax, vmin=0, vmax=vv, 
             yticklabels=list("ABCDEFGH"), xticklabels=list(range(1,9)), square=True, 
             annot=np.array(annot).reshape(8, 8), cmap=sns.color_palette("Blues", as_cmap=True), fmt="", cbar=False)
     return ax
+# end def
 
 def plot_mentals(ax, logits):
     assert logits.shape[0] == 64
@@ -32,7 +34,10 @@ def plot_mentals(ax, logits):
             annot.append(" ")
         else:
             annot.append("X")
+        # end if
+    # end for
     sns.heatmap(probs, ax=ax, vmin=0, vmax=1., 
             yticklabels=list("ABCDEFGH"), xticklabels=list(range(1,9)), square=True, 
             annot=np.array(annot).reshape(8, 8), cmap=sns.color_palette("Blues", as_cmap=True), fmt="", cbar=False)
     return ax
+# end def
